@@ -3,6 +3,15 @@
 
 ## Opis projektu
 
+Do projektu wykorzystano system operacyjny Debian 12.
+
+W celu autoryzacji użytkowników, należy użyć jednego z użytkowników z pliku json, których hasło jest zahashowane.
+- jakub : jakub123,
+- admin: admin123,
+- testuser: test123
+
+
+
 Ten projekt implementuje **własny serwis VPN** oparty o interfejs TUN (`tun0`), który:
 
 - szyfruje cały ruch IP (TCP, ICMP),
@@ -95,11 +104,12 @@ sudo python3 client.py
 - SOCKS5 proxy z filtrowaniem portów
 
 ## Dodatowe implementacja i zabezpieczenia
-- Impementacja systemu w kontenery 
-- Moonitoring systemu, zbieranie logów 
+- Impementacja systemu w kontenery
+- Impementacja bazy danych do przechowywania informacji o użytkownikach
+- Monitoring systemu, zbieranie logów 
 - Wrożenie limitu prób logowania w określonym czasie
 - Whitelist / Blocklist w celu eliminiacji logowania z nieautoryzowanych adresów
-- Określenie długości sesji i prośba o ponowną audentykacje użytkowników
+- Określenie długości sesji i prośba o ponowną autentykacje użytkowników
 - Generowanie nowych kluczy AES w trakcji sesji
 - Dodatkowe logowanie na wartstwie SOCKS5
 - opcjonalnie implementacja GUI
