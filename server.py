@@ -80,7 +80,7 @@ while True:
         if is_allowed_packet(packet):
             tun.write(packet)
         else:
-            print("❌ Zablokowano pakiet: niedozwolony port lub protokół")
+            print("Zablokowano pakiet: niedozwolony port lub protokół")
 
     if tun.fileno() in r:
         packet = tun.read()
