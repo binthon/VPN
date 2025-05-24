@@ -37,7 +37,7 @@ def handle_client(client_socket):
         port = int.from_bytes(port_bytes, 'big')
 
         if port not in ALLOWED_PORTS:
-            print(f"❌ SOCKS5: Odrzucono dostęp do {addr}:{port}")
+            print(f"SOCKS5: Odrzucono dostęp do {addr}:{port}")
             client_socket.close()
             return
 
@@ -47,7 +47,7 @@ def handle_client(client_socket):
             b"\x05\x00\x00\x01" + socket.inet_aton("0.0.0.0") + b"\x00\x00"
         )
 
-        print(f"✅ SOCKS5: Połączono z {addr}:{port}")
+        print(f"SOCKS5: Połączono z {addr}:{port}")
 
         def forward(src, dst):
             try:
@@ -65,7 +65,7 @@ def handle_client(client_socket):
         threading.Thread(target=forward, args=(remote, client_socket), daemon=True).start()
 
     except Exception as e:
-        print(f"⚠️ Błąd SOCKS5: {e}")
+        print(f"Błąd SOCKS5: {e}")
         client_socket.close()
 
 
