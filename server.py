@@ -2,9 +2,12 @@ import socket
 import select
 from struct import unpack
 from tun import TunInterface
-from aes import encrypt, decrypt, set_key
+from aes import encrypt, decrypt
 from users import load_users, check_pass
 from rsa_gen import load_private_key, rsa_decrypt
+from check_ip import IPAllocator
+
+manager_ip = IPAllocator()
 
 LISTEN_IP = '0.0.0.0'
 LISTEN_PORT = 5555
@@ -13,8 +16,8 @@ users = load_users()
 private_key = load_private_key()
 
 authenticated_clients = set()
-aes_initialized = set()
-client_addr = None
+aes_initialized = {}
+client_tun_queue = {}
 
 tun = TunInterface('tun0', ip='100.20.10.1/24')
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -56,8 +59,9 @@ while True:
                 username, password = credentials.strip().split(":", 1)
                 if check_pass(username, password, users):
                     authenticated_clients.add(addr)
-                    sock.sendto(b'OK', addr)
-                    print(f"Zalogowano użytkownika {username} z {addr}")
+                    assigned_ip = manager_ip.assign(addr)
+                    sock.sendto(f"OK:{assigned_ip}".encode(), addr)
+                    rint(f"Zalogowano użytkownika {username} z {addr}, przypisano IP {assigned_ip}")
                 else:
                     sock.sendto(b'ERROR', addr)
                     print(f"Błąd logowania od {addr}")
@@ -68,22 +72,29 @@ while True:
         if addr in authenticated_clients and addr not in aes_initialized:
             try:
                 aes_key = rsa_decrypt(private_key, data)
-                set_key(aes_key)
-                aes_initialized.add(addr)
+                aes_initialized[addr] = aes_key 
+                client_tun_queue[addr] = []
                 print(f"Odebrano i ustawiono klucz AES od {addr}")
             except Exception as e:
                 print(f"Błąd przy dekodowaniu klucza AES od {addr}: {e}")
             continue
 
-        client_addr = addr
-        packet = decrypt(data)
-        if is_allowed_packet(packet):
-            tun.write(packet)
-        else:
-            print("Zablokowano pakiet: niedozwolony port lub protokół")
+
+        try:
+            packet = decrypt(data, key=aes_initialized[addr])
+            if is_allowed_packet(packet):
+                tun.write(packet)
+            else:
+                print("Zablokowano pakiet: niedozwolony port lub protokół")
+        except Exception as e:
+            print(f"Błąd przy deszyfrowaniu pakietu od {addr}: {e}")
 
     if tun.fileno() in r:
         packet = tun.read()
-        if client_addr:
-            encrypted_packet = encrypt(packet)
-            sock.sendto(encrypted_packet, client_addr)
+        for addr in authenticated_clients:
+            if addr in aes_initialized:
+                try:
+                    encrypted_packet = encrypt(packet, key=aes_initialized[addr])
+                    sock.sendto(encrypted_packet, addr)
+                except Exception as e:
+                    print(f"Błąd przy wysyłaniu pakietu do {addr}: {e}")
