@@ -1,5 +1,4 @@
 /__pycache__
-Dockerfile
 private.pem
 public.pem
-users.json
+

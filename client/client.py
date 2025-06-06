@@ -1,7 +1,7 @@
 import socket
 import select
 from tun import TunInterface
-from aes import encrypt, decrypt, set_key, generate_key
+from aes import encrypt, decrypt, generate_key
 from rsa_gen import load_public_key, rsa_encrypt
 import getpass
 
@@ -17,6 +17,7 @@ credentials = f"{username}:{password}".encode()
 sock.sendto(credentials, (SERVER_IP, SERVER_PORT))
 
 resp, _ = sock.recvfrom(1024)
+print(f"[DEBUG] Odebrano: {resp}")
 if not resp.startswith(b'OK:'):
     print("Logowanie nieudane")
     exit(1)
@@ -25,11 +26,10 @@ if not resp.startswith(b'OK:'):
 assigned_ip = resp.decode().split(':', 1)[1].strip()
 print(f"Zalogowano – przypisany adres IP: {assigned_ip}")
 
-tun = TunInterface('tun0', ip=f"{assigned_ip}/24")
+tun = TunInterface(None, ip=f"{assigned_ip}/24")
 
 print("Wysyłam klucz AES do serwera...")
 aes_key = generate_key()
-set_key(aes_key)
 
 public_key = load_public_key('public.pem')
 encrypted_aes_key = rsa_encrypt(public_key, aes_key)
@@ -43,10 +43,10 @@ while True:
 
     if tun.fileno() in r:
         packet = tun.read()
-        encrypted_packet = encrypt(packet)
+        encrypted_packet = encrypt(packet, key=aes_key)
         sock.sendto(encrypted_packet, (SERVER_IP, SERVER_PORT))
 
     if sock.fileno() in r:
         encrypted_data, _ = sock.recvfrom(2048)
-        packet = decrypt(encrypted_data)
+        packet = decrypt(encrypted_data, key=aes_key)
         tun.write(packet)
