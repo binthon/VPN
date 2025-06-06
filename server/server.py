@@ -19,7 +19,7 @@ authenticated_clients = set()
 aes_initialized = {}
 client_tun_queue = {}
 
-tun = TunInterface('tun0', ip='100.20.10.1/24')
+tun = TunInterface(None, ip='100.20.10.1/24')
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 sock.bind((LISTEN_IP, LISTEN_PORT))
 
@@ -52,20 +52,24 @@ while True:
 
     if sock.fileno() in r:
         data, addr = sock.recvfrom(4096)
+        print(f"[DEBUG] Odebrano od {addr}: {data!r}", flush=True)
 
         if addr not in authenticated_clients:
             try:
                 credentials = data.decode()
+                print(f"[DEBUG] Odczytano login dane: {credentials!r}", flush=True)
                 username, password = credentials.strip().split(":", 1)
+                print(f"Próba logowania: {username} / {password} od {addr}",flush=True)
                 if check_pass(username, password, users):
                     authenticated_clients.add(addr)
                     assigned_ip = manager_ip.assign(addr)
                     sock.sendto(f"OK:{assigned_ip}".encode(), addr)
-                    rint(f"Zalogowano użytkownika {username} z {addr}, przypisano IP {assigned_ip}")
+                    print(f"Zalogowano użytkownika {username} z {addr}, przypisano IP {assigned_ip}",flush=True)
                 else:
                     sock.sendto(b'ERROR', addr)
-                    print(f"Błąd logowania od {addr}")
-            except:
+                    print(f"Błąd logowania od {addr}",flush=True)
+            except Exception as e:
+                print(f"[EXCEPTION] Wystąpił błąd: {e}", flush=True)
                 sock.sendto(b'ERROR', addr)
             continue
 
@@ -85,9 +89,9 @@ while True:
             if is_allowed_packet(packet):
                 tun.write(packet)
             else:
-                print("Zablokowano pakiet: niedozwolony port lub protokół")
+                print("Zablokowano pakiet: niedozwolony port lub protokół",flush=True)
         except Exception as e:
-            print(f"Błąd przy deszyfrowaniu pakietu od {addr}: {e}")
+            print(f"Błąd przy deszyfrowaniu pakietu od {addr}: {e}",flush=True)
 
     if tun.fileno() in r:
         packet = tun.read()
@@ -97,4 +101,4 @@ while True:
                     encrypted_packet = encrypt(packet, key=aes_initialized[addr])
                     sock.sendto(encrypted_packet, addr)
                 except Exception as e:
-                    print(f"Błąd przy wysyłaniu pakietu do {addr}: {e}")
+                    print(f"Błąd przy wysyłaniu pakietu do {addr}: {e}",flush=True)
